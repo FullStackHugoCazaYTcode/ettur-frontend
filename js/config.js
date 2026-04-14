@@ -3,7 +3,7 @@
  */
 const CONFIG = {
     // Cambiar esta URL por la del backend en Railway
-    API_BASE: localStorage.getItem('ettur_api_url') || 'https://tu-backend.railway.app',
+    API_BASE: localStorage.getItem('ettur_api_url') || 'https://ettur-backend-production.up.railway.app',
     APP_NAME: 'ETTUR La Universidad',
     VERSION: '1.0.0',
     TOKEN_KEY: 'ettur_token',
