@@ -1,5 +1,5 @@
 /**
- * ETTUR - Página Validar Pagos
+ * ETTUR - Página Validar Pagos v2.0
  * Para Admin y Coadmin
  */
 const PageValidar = {
@@ -18,18 +18,27 @@ const PageValidar = {
 
         let content = '';
         if (pagos.length > 0) {
-            content = pagos.map(p => `
+            content = pagos.map(p => {
+                const periodoLabel = CONFIG.periodLabelShort(p);
+                const frecLabel = p.frecuencia === 'mensual' ? 'Mensual' : 'Semanal';
+                const tipoTrab = p.tipo_trabajador ? CONFIG.tipoTrabajadorBadge(p.tipo_trabajador) : '';
+
+                return `
                 <div class="card-ettur fade-in mb-3">
                     <div class="card-body-inner pt-3">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div>
                                 <div class="fw-bold">${p.trabajador_nombre}</div>
-                                <small class="text-muted">DNI: ${p.trabajador_dni}</small>
+                                <small class="text-muted">DNI: ${p.trabajador_dni} · 🚗 ${p.trabajador_placa || '—'}</small>
+                                <div class="mt-1">${tipoTrab}</div>
                             </div>
                             ${UI.badgeEstado('pendiente')}
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span>${CONFIG.periodLabel(p.anio, p.mes, p.quincena)}</span>
+                            <div>
+                                <span class="fw-semibold">${periodoLabel}</span>
+                                <br><small class="text-muted">Tarifa ${p.tipo_tarifa} · ${frecLabel}</small>
+                            </div>
                             <span class="fw-bold fs-5 text-primary">${CONFIG.formatMoney(p.monto_pagado)}</span>
                         </div>
                         <div class="d-flex gap-2 mb-3" style="font-size:0.8rem">
@@ -55,7 +64,8 @@ const PageValidar = {
                             </button>
                         </div>
                     </div>
-                </div>`).join('');
+                </div>`;
+            }).join('');
         } else {
             content = UI.emptyState('clipboard-check', '¡Todo validado!', 'No hay pagos pendientes de aprobación.');
         }
