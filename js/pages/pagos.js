@@ -1,5 +1,5 @@
 /**
- * ETTUR - Página de Pagos (Trabajador)
+ * ETTUR - Página de Pagos v2.0
  * Subir pago y ver mis comprobantes
  */
 const PagePagos = {
@@ -28,6 +28,7 @@ const PagePagos = {
         }
 
         const p = data.periodo_siguiente_pago;
+        const frecLabel = p.frecuencia === 'mensual' ? 'Mensual' : 'Semanal';
 
         main.innerHTML = `
             <div class="page-title"><i class="bi bi-cash-stack"></i> Subir Pago</div>
@@ -39,11 +40,11 @@ const PagePagos = {
                 </div>
                 <div class="card-body-inner">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="fw-bold fs-5">${CONFIG.periodLabel(p.anio, p.mes, p.quincena)}</span>
+                        <span class="fw-bold fs-5">${CONFIG.periodLabelShort(p)}</span>
                         <span class="stat-value text-primary">${CONFIG.formatMoney(p.monto)}</span>
                     </div>
                     <small class="text-muted">
-                        <i class="bi bi-calendar3"></i> Del ${p.fecha_inicio} al ${p.fecha_fin} · Tarifa ${p.tipo_tarifa}
+                        <i class="bi bi-calendar3"></i> Del ${p.fecha_inicio} al ${p.fecha_fin} · Tarifa ${p.tipo_tarifa} · ${frecLabel}
                     </small>
 
                     ${data.total_periodos_pendientes > 1 ? `
@@ -58,9 +59,8 @@ const PagePagos = {
                 <div class="card-head"><h3>Datos del Pago</h3></div>
                 <div class="card-body-inner">
                     <form id="form-pago" enctype="multipart/form-data">
-                        <input type="hidden" id="pago-anio" value="${p.anio}">
-                        <input type="hidden" id="pago-mes" value="${p.mes}">
-                        <input type="hidden" id="pago-quincena" value="${p.quincena}">
+                        <input type="hidden" id="pago-fecha-inicio" value="${p.fecha_inicio}">
+                        <input type="hidden" id="pago-fecha-fin" value="${p.fecha_fin}">
 
                         <div class="form-section">
                             <label>Método de Pago</label>
@@ -90,7 +90,7 @@ const PagePagos = {
 
                         <div class="form-section">
                             <label>Observaciones (opcional)</label>
-                            <textarea class="form-control" id="pago-observaciones" rows="2" placeholder="Ej: Pago de dos quincenas"></textarea>
+                            <textarea class="form-control" id="pago-observaciones" rows="2" placeholder="Ej: Pago adelantado"></textarea>
                         </div>
 
                         <div id="pago-error" class="alert alert-danger d-none"></div>
@@ -127,7 +127,6 @@ const PagePagos = {
         btn.classList.add('active');
         document.getElementById('pago-metodo').value = btn.dataset.metodo;
 
-        // Show/hide comprobante based on method
         const section = document.getElementById('comprobante-section');
         if (btn.dataset.metodo === 'efectivo') {
             section.style.display = 'none';
@@ -179,9 +178,8 @@ const PagePagos = {
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
 
         const formData = new FormData();
-        formData.append('anio', document.getElementById('pago-anio').value);
-        formData.append('mes', document.getElementById('pago-mes').value);
-        formData.append('quincena', document.getElementById('pago-quincena').value);
+        formData.append('fecha_inicio', document.getElementById('pago-fecha-inicio').value);
+        formData.append('fecha_fin', document.getElementById('pago-fecha-fin').value);
         formData.append('metodo_pago', metodo);
         formData.append('observaciones', document.getElementById('pago-observaciones').value);
         if (file) formData.append('comprobante', file);
@@ -212,9 +210,10 @@ const PagePagos = {
                 <div class="payment-item" onclick="PagePagos.verDetalle(${p.id})">
                     <div class="payment-dot ${p.estado}"></div>
                     <div class="payment-info">
-                        <div class="payment-period">${CONFIG.periodLabel(p.anio, p.mes, p.quincena)}</div>
+                        <div class="payment-period">${CONFIG.periodLabelShort(p)}</div>
                         <div class="payment-meta">
                             ${UI.metodoPagoIcon(p.metodo_pago)} · ${CONFIG.formatDate(p.fecha_pago)}
+                            · <small class="text-muted">${p.frecuencia === 'mensual' ? 'Mensual' : 'Semanal'}</small>
                         </div>
                     </div>
                     <div class="payment-status">
@@ -251,12 +250,13 @@ const PagePagos = {
         const body = `
             <div class="mb-3">
                 <div class="d-flex justify-content-between mb-2">
-                    <strong>${CONFIG.periodLabel(p.anio, p.mes, p.quincena)}</strong>
+                    <strong>${CONFIG.periodLabelShort(p)}</strong>
                     ${UI.badgeEstado(p.estado)}
                 </div>
                 <table class="table table-sm table-borderless mb-0" style="font-size:0.85rem">
                     <tr><td class="text-muted">Monto:</td><td class="fw-bold">${CONFIG.formatMoney(p.monto_pagado)}</td></tr>
                     <tr><td class="text-muted">Método:</td><td>${UI.metodoPagoIcon(p.metodo_pago)}</td></tr>
+                    <tr><td class="text-muted">Frecuencia:</td><td>${p.frecuencia === 'mensual' ? 'Mensual' : 'Semanal'}</td></tr>
                     <tr><td class="text-muted">Fecha pago:</td><td>${CONFIG.formatDateTime(p.fecha_pago)}</td></tr>
                     ${p.fecha_validacion ? `<tr><td class="text-muted">Validado:</td><td>${CONFIG.formatDateTime(p.fecha_validacion)}</td></tr>` : ''}
                     ${p.validado_por_nombre ? `<tr><td class="text-muted">Validado por:</td><td>${p.validado_por_nombre}</td></tr>` : ''}
