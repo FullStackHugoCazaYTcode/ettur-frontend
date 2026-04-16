@@ -7,51 +7,39 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>ETTUR La Universidad</title>
-
-    <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
     <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-
-    <!-- Splash / Loading Screen -->
+    <!-- Splash -->
     <div id="splash-screen" class="splash-screen">
         <div class="splash-content">
-            <div class="splash-icon">
-                <i class="bi bi-bus-front-fill"></i>
-            </div>
+            <div class="splash-icon"><i class="bi bi-bus-front-fill"></i></div>
             <h1 class="splash-title">ETTUR</h1>
             <p class="splash-subtitle">La Universidad</p>
-            <div class="splash-loader">
-                <div class="splash-bar"></div>
-            </div>
+            <div class="splash-loader"><div class="splash-bar"></div></div>
         </div>
     </div>
 
-    <!-- Login Screen -->
+    <!-- Login -->
     <div id="login-screen" class="screen" style="display:none;">
         <div class="login-container">
             <div class="login-header">
-                <div class="login-logo">
-                    <i class="bi bi-bus-front-fill"></i>
-                </div>
+                <div class="login-logo"><i class="bi bi-bus-front-fill"></i></div>
                 <h1>ETTUR</h1>
                 <p>La Universidad — Sistema de Recaudación</p>
             </div>
             <form id="login-form" class="login-form" autocomplete="off">
                 <div class="form-floating mb-3">
-                    <input type="text" class="form-control" id="login-username" placeholder="Usuario" required autocomplete="username">
-                    <label for="login-username"><i class="bi bi-person"></i> Usuario</label>
+                    <input type="text" class="form-control" id="login-dni" placeholder="DNI" required maxlength="8" pattern="\d{8}" inputmode="numeric">
+                    <label for="login-dni"><i class="bi bi-person-vcard"></i> DNI</label>
                 </div>
                 <div class="form-floating mb-3">
-                    <input type="password" class="form-control" id="login-password" placeholder="Contraseña" required autocomplete="current-password">
-                    <label for="login-password"><i class="bi bi-lock"></i> Contraseña</label>
+                    <input type="text" class="form-control" id="login-placa" placeholder="Placa" required style="text-transform:uppercase">
+                    <label for="login-placa"><i class="bi bi-truck-front"></i> Placa del Vehículo</label>
                 </div>
                 <div id="login-error" class="alert alert-danger d-none" role="alert"></div>
                 <button type="submit" class="btn btn-primary btn-lg w-100 btn-login" id="btn-login">
@@ -60,34 +48,24 @@
                 </button>
             </form>
             <div class="login-footer">
-                <small>v1.0 · Sistema Integral de Recaudación</small>
+                <small>v2.0 · Sistema Integral de Recaudación</small>
             </div>
         </div>
     </div>
 
-    <!-- Main App Shell -->
+    <!-- App Shell -->
     <div id="app-shell" class="app-shell" style="display:none;">
-
-        <!-- Top Header Bar -->
         <header class="app-header">
             <div class="header-left">
-                <button class="btn btn-link btn-menu" id="btn-sidebar" aria-label="Menú">
-                    <i class="bi bi-list"></i>
-                </button>
-                <div class="header-brand">
-                    <i class="bi bi-bus-front-fill"></i>
-                    <span>ETTUR</span>
-                </div>
+                <button class="btn btn-link btn-menu" id="btn-sidebar"><i class="bi bi-list"></i></button>
+                <div class="header-brand"><i class="bi bi-bus-front-fill"></i><span>ETTUR</span></div>
             </div>
             <div class="header-right">
                 <span class="badge-role" id="badge-rol"></span>
-                <div class="header-avatar" id="header-avatar" title="Mi cuenta">
-                    <i class="bi bi-person-circle"></i>
-                </div>
+                <div class="header-avatar" id="header-avatar" title="Mi cuenta"><i class="bi bi-person-circle"></i></div>
             </div>
         </header>
 
-        <!-- Sidebar / Drawer -->
         <div class="sidebar-overlay" id="sidebar-overlay"></div>
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
@@ -98,37 +76,25 @@
                         <small id="sidebar-rol"></small>
                     </div>
                 </div>
-                <button class="btn btn-link btn-close-sidebar" id="btn-close-sidebar">
-                    <i class="bi bi-x-lg"></i>
-                </button>
+                <button class="btn btn-link btn-close-sidebar" id="btn-close-sidebar"><i class="bi bi-x-lg"></i></button>
             </div>
-            <nav class="sidebar-nav" id="sidebar-nav">
-                <!-- Dynamic menu items loaded by JS -->
-            </nav>
+            <nav class="sidebar-nav" id="sidebar-nav"></nav>
             <div class="sidebar-footer">
-                <button class="btn btn-outline-danger btn-sm w-100" id="btn-logout">
-                    <i class="bi bi-box-arrow-left"></i> Cerrar Sesión
-                </button>
+                <button class="btn btn-outline-danger btn-sm w-100" id="btn-logout"><i class="bi bi-box-arrow-left"></i> Cerrar Sesión</button>
             </div>
         </aside>
 
-        <!-- Main Content Area -->
-        <main class="app-main" id="app-main">
-            <!-- Content loaded dynamically -->
-        </main>
+        <main class="app-main" id="app-main"></main>
 
-        <!-- Bottom Navigation (Mobile) -->
-        <nav class="bottom-nav" id="bottom-nav">
-            <!-- Dynamic bottom nav loaded by JS -->
-        </nav>
+        <nav class="bottom-nav" id="bottom-nav"></nav>
     </div>
 
-    <!-- Toast Container -->
+    <!-- Toast -->
     <div class="toast-container position-fixed top-0 end-0 p-3" id="toast-container"></div>
 
     <!-- Modal Global -->
     <div class="modal fade" id="global-modal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modal-title"></h5>
@@ -140,7 +106,7 @@
         </div>
     </div>
 
-    <!-- Image Viewer Modal -->
+    <!-- Image Viewer -->
     <div class="modal fade" id="image-modal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content bg-dark">
@@ -154,7 +120,6 @@
         </div>
     </div>
 
-    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
