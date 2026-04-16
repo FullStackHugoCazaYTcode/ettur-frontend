@@ -1,5 +1,5 @@
 /**
- * ETTUR - Página Dashboard
+ * ETTUR - Página Dashboard v2.0
  * Vista adaptativa según rol
  */
 const PageDashboard = {
@@ -14,7 +14,6 @@ const PageDashboard = {
         }
     },
 
-    // ============= DASHBOARD TRABAJADOR =============
     async renderTrabajador(main) {
         const res = await API.getPeriodosPendientes();
 
@@ -38,6 +37,7 @@ const PageDashboard = {
 
             if (data.periodo_siguiente_pago) {
                 const p = data.periodo_siguiente_pago;
+                const frecLabel = p.frecuencia === 'mensual' ? 'Mensual' : 'Semanal';
                 accionesHTML = `
                     <div class="card-ettur fade-in" style="animation-delay:0.1s">
                         <div class="card-head">
@@ -46,8 +46,8 @@ const PageDashboard = {
                         <div class="card-body-inner">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
-                                    <div class="fw-bold">${CONFIG.periodLabel(p.anio, p.mes, p.quincena)}</div>
-                                    <small class="text-muted">Tarifa ${p.tipo_tarifa}</small>
+                                    <div class="fw-bold">${CONFIG.periodLabelShort(p)}</div>
+                                    <small class="text-muted">Tarifa ${p.tipo_tarifa} · ${frecLabel}</small>
                                 </div>
                                 <div class="stat-value text-primary">${CONFIG.formatMoney(p.monto)}</div>
                             </div>
@@ -58,14 +58,13 @@ const PageDashboard = {
                     </div>`;
             }
 
-            // Últimos 3 periodos pendientes
             if (data.periodos_pendientes.length > 0) {
                 const items = data.periodos_pendientes.slice(0, 5).map(p => `
                     <div class="payment-item">
                         <div class="payment-dot pendiente"></div>
                         <div class="payment-info">
-                            <div class="payment-period">${CONFIG.periodLabel(p.anio, p.mes, p.quincena)}</div>
-                            <div class="payment-meta">Tarifa ${p.tipo_tarifa}</div>
+                            <div class="payment-period">${CONFIG.periodLabelShort(p)}</div>
+                            <div class="payment-meta">Tarifa ${p.tipo_tarifa} · ${p.frecuencia === 'mensual' ? 'Mensual' : 'Semanal'}</div>
                         </div>
                         <div class="payment-amount">${CONFIG.formatMoney(p.monto)}</div>
                     </div>`).join('');
@@ -104,7 +103,6 @@ const PageDashboard = {
             ${periodosHTML}`;
     },
 
-    // ============= DASHBOARD ADMIN/COADMIN =============
     async renderAdmin(main) {
         const res = await API.getDashboard();
 
@@ -195,7 +193,7 @@ const PageDashboard = {
                             <div class="payment-dot ${p.estado}"></div>
                             <div class="payment-info">
                                 <div class="payment-period">${p.trabajador}</div>
-                                <div class="payment-meta">${CONFIG.periodLabel(p.anio, p.mes, p.quincena)} · ${UI.metodoPagoIcon(p.metodo_pago)}</div>
+                                <div class="payment-meta">${CONFIG.periodLabelShort(p)} · ${UI.metodoPagoIcon(p.metodo_pago)}</div>
                             </div>
                             <div class="payment-status">
                                 ${UI.badgeEstado(p.estado)}
