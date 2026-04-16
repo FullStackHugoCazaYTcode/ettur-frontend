@@ -1,5 +1,6 @@
 /**
- * ETTUR - Página Gestión de Usuarios (Solo Admin)
+ * ETTUR - Gestión de Usuarios v2.0
+ * Con tipos de trabajador y placa
  */
 const PageUsuarios = {
     async render() {
@@ -7,14 +8,9 @@ const PageUsuarios = {
         UI.loading();
 
         const res = await API.getUsuarios();
-
-        if (!res.success) {
-            main.innerHTML = `<div class="alert alert-danger">${res.message}</div>`;
-            return;
-        }
+        if (!res.success) { main.innerHTML = `<div class="alert alert-danger">${res.message}</div>`; return; }
 
         const usuarios = res.data;
-
         const grouped = { admin: [], coadmin: [], trabajador: [] };
         usuarios.forEach(u => { if (grouped[u.rol]) grouped[u.rol].push(u); });
 
@@ -34,13 +30,14 @@ const PageUsuarios = {
                                     <span class="status-dot ${u.activo ? 'active' : 'inactive'}"></span>
                                     ${u.nombres} ${u.apellidos}
                                 </div>
-                                <div class="user-detail">DNI: ${u.dni} · @${u.username}</div>
+                                <div class="user-detail">
+                                    DNI: ${u.dni} · 🚗 ${u.placa || '—'}
+                                    ${u.tipo_trabajador ? ' · ' + CONFIG.tipoTrabajadorBadge(u.tipo_trabajador) : ''}
+                                </div>
                                 ${u.fecha_inicio_cobro ? `<div class="user-detail"><i class="bi bi-calendar3"></i> Inicio: ${CONFIG.formatDate(u.fecha_inicio_cobro)}</div>` : ''}
                             </div>
                             <div class="user-actions">
-                                <button class="btn btn-outline-primary btn-sm" onclick="PageUsuarios.editar(${u.id})" title="Editar">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
+                                <button class="btn btn-outline-primary btn-sm" onclick="PageUsuarios.editar(${u.id})" title="Editar"><i class="bi bi-pencil"></i></button>
                                 <button class="btn btn-outline-${u.activo ? 'warning' : 'success'} btn-sm" 
                                         onclick="PageUsuarios.toggleEstado(${u.id}, '${u.nombres} ${u.apellidos}', ${u.activo})" 
                                         title="${u.activo ? 'Dar de baja' : 'Activar'}">
@@ -59,16 +56,12 @@ const PageUsuarios = {
                     <i class="bi bi-plus-lg"></i> Nuevo
                 </button>
             </div>
-
             ${renderGroup('Administradores', 'shield-fill', grouped.admin, 'admin')}
             ${renderGroup('Coadministradores', 'person-badge', grouped.coadmin, 'coadmin')}
-            ${renderGroup('Trabajadores', 'people', grouped.trabajador, 'trabajador')}
-        `;
+            ${renderGroup('Trabajadores', 'people', grouped.trabajador, 'trabajador')}`;
     },
 
-    nuevo() {
-        this.showForm(null);
-    },
+    nuevo() { this.showForm(null); },
 
     async editar(id) {
         const res = await API.getUsuario(id);
@@ -93,50 +86,69 @@ const PageUsuarios = {
                     </div>
                 </div>
                 <div class="row g-2 mb-3">
-                    <div class="col-6">
+                    <div class="col-4">
                         <label class="form-label" style="font-size:0.8rem">DNI *</label>
-                        <input type="text" class="form-control" id="usr-dni" value="${user?.dni || ''}" maxlength="8" pattern="\\d{8}" required>
+                        <input type="text" class="form-control" id="usr-dni" value="${user?.dni || ''}" maxlength="8" pattern="\\d{8}" required inputmode="numeric">
                     </div>
-                    <div class="col-6">
+                    <div class="col-4">
+                        <label class="form-label" style="font-size:0.8rem">Placa *</label>
+                        <input type="text" class="form-control" id="usr-placa" value="${user?.placa || ''}" required style="text-transform:uppercase" placeholder="ABC-123">
+                    </div>
+                    <div class="col-4">
                         <label class="form-label" style="font-size:0.8rem">Teléfono</label>
                         <input type="text" class="form-control" id="usr-telefono" value="${user?.telefono || ''}">
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" style="font-size:0.8rem">Email</label>
-                    <input type="email" class="form-control" id="usr-email" value="${user?.email || ''}">
+                    <label class="form-label" style="font-size:0.8rem">Rol *</label>
+                    <select class="form-select" id="usr-rol" onchange="PageUsuarios.toggleTipoTrab()">
+                        <option value="3" ${user?.rol_id == 3 ? 'selected' : ''}>Trabajador</option>
+                        <option value="2" ${user?.rol_id == 2 ? 'selected' : ''}>Coadministrador</option>
+                        <option value="1" ${user?.rol_id == 1 ? 'selected' : ''}>Administrador</option>
+                    </select>
                 </div>
-                <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <label class="form-label" style="font-size:0.8rem">Usuario *</label>
-                        <input type="text" class="form-control" id="usr-username" value="${user?.username || ''}" required>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label" style="font-size:0.8rem">Rol *</label>
-                        <select class="form-select" id="usr-rol" onchange="PageUsuarios.toggleFechaInicio()">
-                            <option value="3" ${user?.rol_id == 3 ? 'selected' : ''}>Trabajador</option>
-                            <option value="2" ${user?.rol_id == 2 ? 'selected' : ''}>Coadministrador</option>
-                            <option value="1" ${user?.rol_id == 1 ? 'selected' : ''}>Administrador</option>
+
+                <div id="trabajador-fields" style="${(!user || user.rol_id == 3) ? '' : 'display:none'}">
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:0.8rem">Tipo de Trabajador *</label>
+                        <select class="form-select" id="usr-tipo-trab" onchange="PageUsuarios.togglePersonalizado()">
+                            <option value="normal" ${user?.tipo_trabajador == 'normal' ? 'selected' : ''}>Normal (S/12.50 sem. normal / S/10.00 sem. verano)</option>
+                            <option value="especial" ${user?.tipo_trabajador == 'especial' ? 'selected' : ''}>Especial (S/10.00 semanal siempre)</option>
+                            <option value="mensual" ${user?.tipo_trabajador == 'mensual' ? 'selected' : ''}>Mensual (S/30.00 mensual siempre)</option>
+                            <option value="personalizado" ${user?.tipo_trabajador == 'personalizado' ? 'selected' : ''}>Personalizado (monto a medida)</option>
                         </select>
                     </div>
+
+                    <div id="personalizado-fields" style="${user?.tipo_trabajador == 'personalizado' ? '' : 'display:none'}">
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label" style="font-size:0.8rem">Monto (S/.) *</label>
+                                <input type="number" class="form-control" id="usr-monto-pers" value="${user?.monto_personalizado || ''}" step="0.50" min="0.01">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label" style="font-size:0.8rem">Frecuencia *</label>
+                                <select class="form-select" id="usr-freq-pers">
+                                    <option value="semanal" ${user?.frecuencia_personalizado == 'semanal' ? 'selected' : ''}>Semanal</option>
+                                    <option value="mensual" ${user?.frecuencia_personalizado == 'mensual' ? 'selected' : ''}>Mensual</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:0.8rem">Fecha Inicio de Cobro (Puesta en Marcha) *</label>
+                        <input type="date" class="form-control" id="usr-fecha-inicio" value="${user?.fecha_inicio_cobro || ''}">
+                        <small class="text-muted">Solo se cobrarán periodos a partir de esta fecha</small>
+                    </div>
                 </div>
-                ${!isEdit ? `
-                <div class="mb-3">
-                    <label class="form-label" style="font-size:0.8rem">Contraseña *</label>
-                    <input type="password" class="form-control" id="usr-password" minlength="6" required>
-                </div>` : ''}
-                <div class="mb-3" id="fecha-inicio-section" style="${(!user || user.rol_id == 3) ? '' : 'display:none'}">
-                    <label class="form-label" style="font-size:0.8rem">Fecha Inicio de Cobro (Puesta en Marcha)</label>
-                    <input type="date" class="form-control" id="usr-fecha-inicio" value="${user?.fecha_inicio_cobro || ''}">
-                    <small class="text-muted">Solo se cobrarán periodos a partir de esta fecha</small>
-                </div>
+
                 <div id="usr-error" class="alert alert-danger d-none"></div>
             </form>`;
 
         const footer = `
             <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-            ${isEdit ? `<button class="btn btn-warning btn-sm" onclick="PageUsuarios.resetPassword(${user.id})"><i class="bi bi-key"></i> Reset Pass</button>` : ''}
-            <button class="btn btn-primary-ettur btn-ettur" id="btn-save-user">${isEdit ? 'Guardar Cambios' : 'Crear Usuario'}</button>`;
+            ${isEdit ? `<button class="btn btn-warning btn-sm" onclick="PageUsuarios.resetPlaca(${user.id}, '${user.placa || ''}')"><i class="bi bi-truck-front"></i> Cambiar Placa</button>` : ''}
+            <button class="btn btn-primary-ettur btn-ettur" id="btn-save-user">${isEdit ? 'Guardar' : 'Crear Usuario'}</button>`;
 
         const modal = UI.modal(title, body, footer);
 
@@ -145,17 +157,37 @@ const PageUsuarios = {
                 nombres: document.getElementById('usr-nombres').value.trim(),
                 apellidos: document.getElementById('usr-apellidos').value.trim(),
                 dni: document.getElementById('usr-dni').value.trim(),
+                placa: document.getElementById('usr-placa').value.trim().toUpperCase(),
                 telefono: document.getElementById('usr-telefono').value.trim(),
-                email: document.getElementById('usr-email').value.trim(),
-                username: document.getElementById('usr-username').value.trim(),
                 rol_id: parseInt(document.getElementById('usr-rol').value),
-                fecha_inicio_cobro: document.getElementById('usr-fecha-inicio').value,
             };
 
-            if (!data.nombres || !data.apellidos || !data.dni || !data.username) {
+            if (!data.nombres || !data.apellidos || !data.dni || !data.placa) {
                 document.getElementById('usr-error').textContent = 'Complete los campos obligatorios';
                 document.getElementById('usr-error').classList.remove('d-none');
                 return;
+            }
+
+            // Campos de trabajador
+            if (data.rol_id == 3) {
+                data.tipo_trabajador = document.getElementById('usr-tipo-trab').value;
+                data.fecha_inicio_cobro = document.getElementById('usr-fecha-inicio').value;
+
+                if (!data.fecha_inicio_cobro) {
+                    document.getElementById('usr-error').textContent = 'La fecha de inicio de cobro es obligatoria';
+                    document.getElementById('usr-error').classList.remove('d-none');
+                    return;
+                }
+
+                if (data.tipo_trabajador === 'personalizado') {
+                    data.monto_personalizado = parseFloat(document.getElementById('usr-monto-pers').value);
+                    data.frecuencia_personalizado = document.getElementById('usr-freq-pers').value;
+                    if (!data.monto_personalizado || data.monto_personalizado <= 0) {
+                        document.getElementById('usr-error').textContent = 'Ingrese el monto personalizado';
+                        document.getElementById('usr-error').classList.remove('d-none');
+                        return;
+                    }
+                }
             }
 
             let res;
@@ -163,12 +195,6 @@ const PageUsuarios = {
                 data.id = user.id;
                 res = await API.editarUsuario(data);
             } else {
-                data.password = document.getElementById('usr-password').value;
-                if (!data.password || data.password.length < 6) {
-                    document.getElementById('usr-error').textContent = 'Contraseña mínima: 6 caracteres';
-                    document.getElementById('usr-error').classList.remove('d-none');
-                    return;
-                }
                 res = await API.crearUsuario(data);
             }
 
@@ -183,9 +209,14 @@ const PageUsuarios = {
         };
     },
 
-    toggleFechaInicio() {
+    toggleTipoTrab() {
         const rol = document.getElementById('usr-rol').value;
-        document.getElementById('fecha-inicio-section').style.display = rol == '3' ? '' : 'none';
+        document.getElementById('trabajador-fields').style.display = rol == '3' ? '' : 'none';
+    },
+
+    togglePersonalizado() {
+        const tipo = document.getElementById('usr-tipo-trab').value;
+        document.getElementById('personalizado-fields').style.display = tipo === 'personalizado' ? '' : 'none';
     },
 
     toggleEstado(id, nombre, activo) {
@@ -195,39 +226,33 @@ const PageUsuarios = {
             `¿Desea ${accion} a <strong>${nombre}</strong>?`,
             async () => {
                 const res = await API.toggleUsuario(id);
-                if (res.success) {
-                    UI.toast(res.message, 'success');
-                    this.render();
-                } else {
-                    UI.toast(res.message, 'error');
-                }
+                if (res.success) { UI.toast(res.message, 'success'); this.render(); }
+                else { UI.toast(res.message, 'error'); }
             },
             activo ? 'Dar de Baja' : 'Activar',
             activo ? 'warning' : 'success'
         );
     },
 
-    resetPassword(id) {
+    resetPlaca(id, placaActual) {
         const body = `
             <div class="form-section">
-                <label>Nueva Contraseña</label>
-                <input type="password" class="form-control" id="new-pass" minlength="6" placeholder="Mínimo 6 caracteres">
+                <label>Nueva Placa</label>
+                <input type="text" class="form-control" id="new-placa" value="${placaActual}" style="text-transform:uppercase" placeholder="ABC-123">
             </div>`;
         const footer = `
             <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button class="btn btn-warning" id="btn-reset-pass">Restablecer</button>`;
+            <button class="btn btn-warning" id="btn-reset-placa">Actualizar Placa</button>`;
 
-        const modal = UI.modal('Restablecer Contraseña', body, footer);
+        const modal = UI.modal('Cambiar Placa', body, footer);
 
-        document.getElementById('btn-reset-pass').onclick = async () => {
-            const pass = document.getElementById('new-pass').value;
-            if (!pass || pass.length < 6) {
-                UI.toast('Mínimo 6 caracteres', 'error');
-                return;
-            }
+        document.getElementById('btn-reset-placa').onclick = async () => {
+            const placa = document.getElementById('new-placa').value.trim().toUpperCase();
+            if (!placa) { UI.toast('Ingrese la placa', 'error'); return; }
             modal.hide();
-            const res = await API.resetPassword(id, pass);
-            UI.toast(res.success ? res.message : res.message, res.success ? 'success' : 'error');
+            const res = await API.resetPlaca(id, placa);
+            UI.toast(res.message, res.success ? 'success' : 'error');
+            if (res.success) this.render();
         };
     }
 };
