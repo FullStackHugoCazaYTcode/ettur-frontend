@@ -1,8 +1,35 @@
 /**
- * ETTUR - Gestión de Usuarios v2.0
- * Con tipos de trabajador y placa
+ * ETTUR - Gestión de Usuarios v2.1
+ * Carga tarifas dinámicas desde la BD
  */
 const PageUsuarios = {
+    tarifasCache: null,
+
+    async cargarTarifas() {
+        if (this.tarifasCache) return this.tarifasCache;
+        const res = await API.getTarifas();
+        if (res.success) {
+            this.tarifasCache = res.data.tarifas || [];
+        }
+        return this.tarifasCache || [];
+    },
+
+    getTarifaTexto(tipo, tarifas) {
+        const items = tarifas.filter(t => t.tipo_trabajador === tipo);
+        if (items.length === 0) return '';
+        const normal = items.find(t => t.temporada === 'normal');
+        const verano = items.find(t => t.temporada === 'verano');
+        const freq = items[0].frecuencia === 'mensual' ? 'mes.' : 'sem.';
+
+        if (normal && verano && normal.monto === verano.monto) {
+            return `S/${parseFloat(normal.monto).toFixed(2)} ${freq} siempre`;
+        }
+        let texto = '';
+        if (normal) texto += `S/${parseFloat(normal.monto).toFixed(2)} ${freq} normal`;
+        if (verano) texto += ` / S/${parseFloat(verano.monto).toFixed(2)} ${freq} verano`;
+        return texto;
+    },
+
     async render() {
         const main = document.getElementById('app-main');
         UI.loading();
@@ -22,29 +49,37 @@ const PageUsuarios = {
                         <h3><i class="bi bi-${icon}"></i> ${title} (${users.length})</h3>
                     </div>
                     <div class="card-body-inner">
-                        ${users.map(u => `
-                        <div class="user-item">
-                            <div class="user-avatar-sm ${rolClass}">${u.nombres.charAt(0)}${u.apellidos.charAt(0)}</div>
-                            <div class="user-info-text">
-                                <div class="user-name">
-                                    <span class="status-dot ${u.activo ? 'active' : 'inactive'}"></span>
-                                    ${u.nombres} ${u.apellidos}
+                        ${users.map(u => {
+                            const tipoLabel = u.tipo_trabajador ? CONFIG.tipoTrabajadorBadge(u.tipo_trabajador) : '';
+                            const montoPersonalizado = u.tipo_trabajador === 'personalizado' && u.monto_personalizado
+                                ? ` · S/${parseFloat(u.monto_personalizado).toFixed(2)} ${u.frecuencia_personalizado || 'sem.'}`
+                                : '';
+                            return `
+                            <div class="user-item">
+                                <div class="user-avatar-sm ${rolClass}">${u.nombres.charAt(0)}${u.apellidos.charAt(0)}</div>
+                                <div class="user-info-text">
+                                    <div class="user-name">
+                                        <span class="status-dot ${u.activo ? 'active' : 'inactive'}"></span>
+                                        ${u.nombres} ${u.apellidos}
+                                    </div>
+                                    <div class="user-detail">
+                                        DNI: ${u.dni} · 🚗 ${u.placa || '—'}
+                                    </div>
+                                    <div class="user-detail">
+                                        ${tipoLabel}${montoPersonalizado}
+                                    </div>
+                                    ${u.fecha_inicio_cobro ? `<div class="user-detail"><i class="bi bi-calendar3"></i> Inicio: ${CONFIG.formatDate(u.fecha_inicio_cobro)}</div>` : ''}
                                 </div>
-                                <div class="user-detail">
-                                    DNI: ${u.dni} · 🚗 ${u.placa || '—'}
-                                    ${u.tipo_trabajador ? ' · ' + CONFIG.tipoTrabajadorBadge(u.tipo_trabajador) : ''}
+                                <div class="user-actions">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="PageUsuarios.editar(${u.id})" title="Editar"><i class="bi bi-pencil"></i></button>
+                                    <button class="btn btn-outline-${u.activo ? 'warning' : 'success'} btn-sm" 
+                                            onclick="PageUsuarios.toggleEstado(${u.id}, '${u.nombres} ${u.apellidos}', ${u.activo})" 
+                                            title="${u.activo ? 'Dar de baja' : 'Activar'}">
+                                        <i class="bi bi-${u.activo ? 'pause' : 'play'}"></i>
+                                    </button>
                                 </div>
-                                ${u.fecha_inicio_cobro ? `<div class="user-detail"><i class="bi bi-calendar3"></i> Inicio: ${CONFIG.formatDate(u.fecha_inicio_cobro)}</div>` : ''}
-                            </div>
-                            <div class="user-actions">
-                                <button class="btn btn-outline-primary btn-sm" onclick="PageUsuarios.editar(${u.id})" title="Editar"><i class="bi bi-pencil"></i></button>
-                                <button class="btn btn-outline-${u.activo ? 'warning' : 'success'} btn-sm" 
-                                        onclick="PageUsuarios.toggleEstado(${u.id}, '${u.nombres} ${u.apellidos}', ${u.activo})" 
-                                        title="${u.activo ? 'Dar de baja' : 'Activar'}">
-                                    <i class="bi bi-${u.activo ? 'pause' : 'play'}"></i>
-                                </button>
-                            </div>
-                        </div>`).join('')}
+                            </div>`;
+                        }).join('')}
                     </div>
                 </div>`;
         };
@@ -61,17 +96,24 @@ const PageUsuarios = {
             ${renderGroup('Trabajadores', 'people', grouped.trabajador, 'trabajador')}`;
     },
 
-    nuevo() { this.showForm(null); },
+    nuevo() { this.tarifasCache = null; this.showForm(null); },
 
     async editar(id) {
+        this.tarifasCache = null;
         const res = await API.getUsuario(id);
         if (!res.success) { UI.toast(res.message, 'error'); return; }
         this.showForm(res.data);
     },
 
-    showForm(user) {
+    async showForm(user) {
         const isEdit = !!user;
         const title = isEdit ? 'Editar Usuario' : 'Nuevo Usuario';
+
+        // Cargar tarifas desde la BD
+        const tarifas = await this.cargarTarifas();
+        const textoNormal = this.getTarifaTexto('normal', tarifas);
+        const textoEspecial = this.getTarifaTexto('especial', tarifas);
+        const textoMensual = this.getTarifaTexto('mensual', tarifas);
 
         const body = `
             <form id="form-usuario">
@@ -112,11 +154,30 @@ const PageUsuarios = {
                     <div class="mb-3">
                         <label class="form-label" style="font-size:0.8rem">Tipo de Trabajador *</label>
                         <select class="form-select" id="usr-tipo-trab" onchange="PageUsuarios.togglePersonalizado()">
-                            <option value="normal" ${user?.tipo_trabajador == 'normal' ? 'selected' : ''}>Normal (S/12.50 sem. normal / S/10.00 sem. verano)</option>
-                            <option value="especial" ${user?.tipo_trabajador == 'especial' ? 'selected' : ''}>Especial (S/10.00 semanal siempre)</option>
-                            <option value="mensual" ${user?.tipo_trabajador == 'mensual' ? 'selected' : ''}>Mensual (S/30.00 mensual siempre)</option>
-                            <option value="personalizado" ${user?.tipo_trabajador == 'personalizado' ? 'selected' : ''}>Personalizado (monto a medida)</option>
+                            <option value="normal" ${user?.tipo_trabajador == 'normal' ? 'selected' : ''}>Normal — ${textoNormal}</option>
+                            <option value="especial" ${user?.tipo_trabajador == 'especial' ? 'selected' : ''}>Especial — ${textoEspecial}</option>
+                            <option value="mensual" ${user?.tipo_trabajador == 'mensual' ? 'selected' : ''}>Mensual — ${textoMensual}</option>
+                            <option value="personalizado" ${user?.tipo_trabajador == 'personalizado' ? 'selected' : ''}>Personalizado — monto a medida</option>
                         </select>
+                    </div>
+
+                    <div id="tipo-detalle" class="alert alert-light border mb-3" style="font-size:0.8rem">
+                        <div id="detalle-normal" ${user?.tipo_trabajador && user.tipo_trabajador !== 'normal' ? 'style="display:none"' : ''}>
+                            <i class="bi bi-person-fill text-primary"></i> <strong>Trabajador Normal</strong><br>
+                            Pago <strong>semanal</strong> — ${textoNormal}
+                        </div>
+                        <div id="detalle-especial" style="${user?.tipo_trabajador == 'especial' ? '' : 'display:none'}">
+                            <i class="bi bi-star-fill text-info"></i> <strong>Trabajador Especial</strong><br>
+                            Pago <strong>semanal</strong> — ${textoEspecial}
+                        </div>
+                        <div id="detalle-mensual" style="${user?.tipo_trabajador == 'mensual' ? '' : 'display:none'}">
+                            <i class="bi bi-calendar-month-fill text-success"></i> <strong>Trabajador Mensual</strong><br>
+                            Pago <strong>mensual</strong> — ${textoMensual}
+                        </div>
+                        <div id="detalle-personalizado" style="${user?.tipo_trabajador == 'personalizado' ? '' : 'display:none'}">
+                            <i class="bi bi-gear-fill text-warning"></i> <strong>Trabajador Personalizado</strong><br>
+                            El monto y frecuencia se configuran manualmente abajo.
+                        </div>
                     </div>
 
                     <div id="personalizado-fields" style="${user?.tipo_trabajador == 'personalizado' ? '' : 'display:none'}">
@@ -168,7 +229,6 @@ const PageUsuarios = {
                 return;
             }
 
-            // Campos de trabajador
             if (data.rol_id == 3) {
                 data.tipo_trabajador = document.getElementById('usr-tipo-trab').value;
                 data.fecha_inicio_cobro = document.getElementById('usr-fecha-inicio').value;
@@ -217,6 +277,12 @@ const PageUsuarios = {
     togglePersonalizado() {
         const tipo = document.getElementById('usr-tipo-trab').value;
         document.getElementById('personalizado-fields').style.display = tipo === 'personalizado' ? '' : 'none';
+
+        // Mostrar detalle correspondiente
+        ['normal', 'especial', 'mensual', 'personalizado'].forEach(t => {
+            const el = document.getElementById('detalle-' + t);
+            if (el) el.style.display = t === tipo ? '' : 'none';
+        });
     },
 
     toggleEstado(id, nombre, activo) {
