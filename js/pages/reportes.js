@@ -1,5 +1,5 @@
 /**
- * ETTUR - Página de Reportes y Liquidación
+ * ETTUR - Página de Reportes v2.0
  */
 const PageReportes = {
     async render() {
@@ -33,7 +33,6 @@ const PageReportes = {
 
             <div id="report-results"></div>`;
 
-        // Auto-load
         this.loadReport();
     },
 
@@ -52,7 +51,6 @@ const PageReportes = {
 
         const d = res.data;
 
-        // Resumen cards
         let html = `
             <div class="row g-3 mb-3 fade-in">
                 <div class="col-6">
@@ -75,7 +73,6 @@ const PageReportes = {
                 </div>
             </div>`;
 
-        // Por método de pago
         if (d.por_metodo.length > 0) {
             html += `
                 <div class="card-ettur fade-in mb-3">
@@ -91,7 +88,6 @@ const PageReportes = {
                 </div>`;
         }
 
-        // Tabla por trabajador
         if (d.trabajadores.length > 0) {
             html += `
                 <div class="card-ettur fade-in">
@@ -169,12 +165,20 @@ const PageReportes = {
                             <tr><th>Periodo</th><th>Estado</th><th class="text-end">Monto</th></tr>
                         </thead>
                         <tbody>
-                            ${d.pagos.map(p => `
-                            <tr>
-                                <td>${CONFIG.periodLabel(p.anio, p.mes, p.quincena)}</td>
-                                <td>${UI.badgeEstado(p.estado)}</td>
-                                <td class="text-end">${CONFIG.formatMoney(p.monto_pagado)}</td>
-                            </tr>`).join('')}
+                            ${d.pagos.map(p => {
+                                const periodoTexto = (p.periodo_inicio || p.fecha_inicio)
+                                    ? CONFIG.periodLabelShort({
+                                        fecha_inicio: p.periodo_inicio || p.fecha_inicio,
+                                        fecha_fin: p.periodo_fin || p.fecha_fin
+                                      })
+                                    : CONFIG.periodLabelShort(p);
+                                return `
+                                <tr>
+                                    <td>${periodoTexto}</td>
+                                    <td>${UI.badgeEstado(p.estado)}</td>
+                                    <td class="text-end">${CONFIG.formatMoney(p.monto_pagado)}</td>
+                                </tr>`;
+                            }).join('')}
                         </tbody>
                     </table>
                 </div>`;
