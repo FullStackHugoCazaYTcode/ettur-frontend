@@ -1,5 +1,5 @@
 /**
- * ETTUR - Servicio API v2.0
+ * ETTUR - Servicio API v2.1
  */
 const API = {
     getToken() { return localStorage.getItem(CONFIG.TOKEN_KEY); },
@@ -20,12 +20,18 @@ const API = {
 
         try {
             const response = await fetch(url, config);
-            const data = await response.json();
-            if (response.status === 401) { Auth.logout(true); return data; }
-            return data;
+            const text = await response.text();
+            try {
+                const data = JSON.parse(text);
+                if (response.status === 401) { Auth.logout(true); return data; }
+                return data;
+            } catch (e) {
+                console.error('Response not JSON:', text.substring(0, 500));
+                return { success: false, message: 'Error del servidor: ' + text.substring(0, 200) };
+            }
         } catch (error) {
-            console.error('API Error:', error);
-            return { success: false, message: 'Error de conexión. Verifique su internet.' };
+            console.error('Fetch Error:', error);
+            return { success: false, message: 'Error de conexión: ' + error.message };
         }
     },
 
@@ -60,18 +66,35 @@ const API = {
         const params = trabajadorId ? `&trabajador_id=${trabajadorId}` : '';
         return this.request(`/api/pagos?action=periodos-pendientes${params}`);
     },
+
     async registrarPago(formData) {
         const url = `${CONFIG.API_BASE}/api/pagos?action=registrar`;
         const token = this.getToken();
+
         try {
             const response = await fetch(url, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
                 body: formData
             });
-            return await response.json();
-        } catch (error) { return { success: false, message: 'Error de conexión' }; }
+
+            const text = await response.text();
+            console.log('registrarPago response status:', response.status);
+            console.log('registrarPago response body:', text.substring(0, 500));
+
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                return { success: false, message: 'Error del servidor: ' + text.substring(0, 300) };
+            }
+        } catch (error) {
+            console.error('registrarPago fetch error:', error);
+            return { success: false, message: 'Error de conexión: ' + error.message };
+        }
     },
+
     async getMisPagos(params = {}) {
         const query = new URLSearchParams({ action: 'mis-pagos', ...params }).toString();
         return this.request(`/api/pagos?${query}`);
