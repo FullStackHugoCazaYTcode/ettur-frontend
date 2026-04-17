@@ -118,5 +118,12 @@ const API = {
         return this.request(`/api/reportes?${query}`);
     },
 
+    // Configuración
+    async getConfig() { return this.request('/api/config?action=get'); },
+    async getYapeInfo() { return this.request('/api/config?action=yape'); },
+    async updateConfig(data) { return this.request('/api/config?action=update', { method: 'POST', body: data }); },
+
+    // Usuarios - eliminar
+    async eliminarUsuario(id) { return this.request('/api/usuarios?action=delete', { method: 'POST', body: { id } }); },
     getComprobanteUrl(path) { return `${CONFIG.API_BASE}/${path}`; }
 };
