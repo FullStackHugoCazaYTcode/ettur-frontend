@@ -1,10 +1,22 @@
 /**
- * ETTUR - Página Mi Perfil
+ * ETTUR - Página Mi Perfil v2.0
+ * Admin: config Yape | Todos: ver placa y datos
  */
 const PagePerfil = {
-    render() {
+    async render() {
         const main = document.getElementById('app-main');
         const user = Auth.getUser();
+
+        // Cargar config de Yape si es admin
+        let yapeNumero = '';
+        let yapeNombre = '';
+        if (Auth.isAdmin()) {
+            const res = await API.getConfig();
+            if (res.success) {
+                yapeNumero = res.data.yape_numero || '';
+                yapeNombre = res.data.yape_nombre || '';
+            }
+        }
 
         main.innerHTML = `
             <div class="page-title"><i class="bi bi-person-gear"></i> Mi Perfil</div>
@@ -20,38 +32,35 @@ const PagePerfil = {
                     </div>
 
                     <table class="table table-sm table-borderless" style="font-size:0.85rem">
-                        <tr><td class="text-muted" style="width:40%">Usuario:</td><td class="fw-semibold">@${user.username}</td></tr>
-                        <tr><td class="text-muted">DNI:</td><td>${user.dni}</td></tr>
+                        <tr><td class="text-muted" style="width:40%">DNI:</td><td class="fw-semibold">${user.dni}</td></tr>
+                        <tr><td class="text-muted">Placa:</td><td class="fw-semibold">🚗 ${user.placa || '—'}</td></tr>
                         ${user.telefono ? `<tr><td class="text-muted">Teléfono:</td><td>${user.telefono}</td></tr>` : ''}
                         ${user.email ? `<tr><td class="text-muted">Email:</td><td>${user.email}</td></tr>` : ''}
-                        ${user.fecha_inicio_cobro ? `<tr><td class="text-muted">Inicio cobro:</td><td>${CONFIG.formatDate(user.fecha_inicio_cobro)}</td></tr>` : ''}
+                        ${user.tipo_trabajador ? `<tr><td class="text-muted">Tipo:</td><td>${CONFIG.tipoTrabajadorBadge(user.tipo_trabajador)}</td></tr>` : ''}
                     </table>
                 </div>
             </div>
 
+            ${Auth.isAdmin() ? `
             <div class="card-ettur fade-in" style="animation-delay:0.1s">
-                <div class="card-head"><h3><i class="bi bi-key"></i> Cambiar Contraseña</h3></div>
+                <div class="card-head"><h3><i class="bi bi-phone-fill text-success"></i> Configuración de Yape</h3></div>
                 <div class="card-body-inner">
-                    <form id="form-password">
-                        <div class="mb-3">
-                            <label class="form-label" style="font-size:0.8rem">Contraseña Actual</label>
-                            <input type="password" class="form-control" id="pass-actual" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label" style="font-size:0.8rem">Nueva Contraseña</label>
-                            <input type="password" class="form-control" id="pass-nuevo" minlength="6" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label" style="font-size:0.8rem">Confirmar Nueva Contraseña</label>
-                            <input type="password" class="form-control" id="pass-confirmar" minlength="6" required>
-                        </div>
-                        <div id="pass-error" class="alert alert-danger d-none"></div>
-                        <button type="submit" class="btn btn-primary-ettur btn-ettur w-100">
-                            <i class="bi bi-check-lg"></i> Actualizar Contraseña
-                        </button>
-                    </form>
+                    <p style="font-size:0.8rem;color:var(--text-secondary)">
+                        Estos datos se mostrarán a los trabajadores cuando seleccionen Yape como método de pago.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:0.8rem">Nombre del titular Yape</label>
+                        <input type="text" class="form-control" id="cfg-yape-nombre" value="${yapeNombre}" placeholder="Ej: Juan Pérez">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:0.8rem">Número de Yape</label>
+                        <input type="text" class="form-control" id="cfg-yape-numero" value="${yapeNumero}" placeholder="Ej: 999888777" maxlength="15" inputmode="numeric">
+                    </div>
+                    <button class="btn btn-success-ettur btn-ettur w-100" onclick="PagePerfil.guardarYape()">
+                        <i class="bi bi-check-lg"></i> Guardar Configuración Yape
+                    </button>
                 </div>
-            </div>
+            </div>` : ''}
 
             <div class="card-ettur fade-in" style="animation-delay:0.2s">
                 <div class="card-head"><h3><i class="bi bi-gear"></i> Configuración</h3></div>
@@ -75,37 +84,22 @@ const PagePerfil = {
                 </button>
                 <p class="text-muted mt-2" style="font-size:0.75rem">${CONFIG.APP_NAME} v${CONFIG.VERSION}</p>
             </div>`;
+    },
 
-        document.getElementById('form-password').onsubmit = async (e) => {
-            e.preventDefault();
-            const errorEl = document.getElementById('pass-error');
-            errorEl.classList.add('d-none');
+    async guardarYape() {
+        const nombre = document.getElementById('cfg-yape-nombre').value.trim();
+        const numero = document.getElementById('cfg-yape-numero').value.trim();
 
-            const actual = document.getElementById('pass-actual').value;
-            const nuevo = document.getElementById('pass-nuevo').value;
-            const confirmar = document.getElementById('pass-confirmar').value;
+        const res = await API.updateConfig({
+            yape_nombre: nombre,
+            yape_numero: numero
+        });
 
-            if (nuevo !== confirmar) {
-                errorEl.textContent = 'Las contraseñas no coinciden';
-                errorEl.classList.remove('d-none');
-                return;
-            }
-
-            if (nuevo.length < 6) {
-                errorEl.textContent = 'Mínimo 6 caracteres';
-                errorEl.classList.remove('d-none');
-                return;
-            }
-
-            const res = await API.changePassword(actual, nuevo);
-            if (res.success) {
-                UI.toast('Contraseña actualizada', 'success');
-                document.getElementById('form-password').reset();
-            } else {
-                errorEl.textContent = res.message;
-                errorEl.classList.remove('d-none');
-            }
-        };
+        if (res.success) {
+            UI.toast('Configuración de Yape guardada', 'success');
+        } else {
+            UI.toast(res.message, 'error');
+        }
     },
 
     saveApiUrl() {
@@ -113,7 +107,7 @@ const PagePerfil = {
         if (url) {
             localStorage.setItem('ettur_api_url', url);
             CONFIG.API_BASE = url;
-            UI.toast('URL guardada. Se usará en las próximas peticiones.', 'success');
+            UI.toast('URL guardada', 'success');
         }
     }
 };
