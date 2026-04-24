@@ -1,22 +1,17 @@
 /**
- * ETTUR - Página Dashboard v2.0
- * Vista adaptativa según rol
+ * ETTUR - Dashboard v2.2
+ * Semana actual visible + temporadas editables
  */
 const PageDashboard = {
     async render() {
         const main = document.getElementById('app-main');
         UI.loading();
-
-        if (Auth.isTrabajador()) {
-            await this.renderTrabajador(main);
-        } else {
-            await this.renderAdmin(main);
-        }
+        if (Auth.isTrabajador()) { await this.renderTrabajador(main); }
+        else { await this.renderAdmin(main); }
     },
 
     async renderTrabajador(main) {
         const res = await API.getPeriodosPendientes();
-
         let deudaHTML = '';
         let periodosHTML = '';
         let accionesHTML = '';
@@ -38,6 +33,7 @@ const PageDashboard = {
             if (data.periodo_siguiente_pago) {
                 const p = data.periodo_siguiente_pago;
                 const frecLabel = p.frecuencia === 'mensual' ? 'Mensual' : 'Semanal';
+                const esActual = p.es_semana_actual ? '<span class="badge bg-info ms-2" style="font-size:0.65rem">Semana Actual</span>' : '';
                 accionesHTML = `
                     <div class="card-ettur fade-in" style="animation-delay:0.1s">
                         <div class="card-head">
@@ -46,7 +42,7 @@ const PageDashboard = {
                         <div class="card-body-inner">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
-                                    <div class="fw-bold">${CONFIG.periodLabelShort(p)}</div>
+                                    <div class="fw-bold">${CONFIG.periodLabelShort(p)} ${esActual}</div>
                                     <small class="text-muted">Tarifa ${p.tipo_tarifa} · ${frecLabel}</small>
                                 </div>
                                 <div class="stat-value text-primary">${CONFIG.formatMoney(p.monto)}</div>
@@ -59,15 +55,21 @@ const PageDashboard = {
             }
 
             if (data.periodos_pendientes.length > 0) {
-                const items = data.periodos_pendientes.slice(0, 5).map(p => `
-                    <div class="payment-item">
+                const items = data.periodos_pendientes.map(p => {
+                    const esActual = p.es_semana_actual;
+                    return `
+                    <div class="payment-item" style="${esActual ? 'background:rgba(59,130,246,0.06);border-radius:8px;padding-left:0.5rem;padding-right:0.5rem' : ''}">
                         <div class="payment-dot pendiente"></div>
                         <div class="payment-info">
-                            <div class="payment-period">${CONFIG.periodLabelShort(p)}</div>
+                            <div class="payment-period">
+                                ${CONFIG.periodLabelShort(p)}
+                                ${esActual ? '<span class="badge bg-info" style="font-size:0.6rem;margin-left:4px">ACTUAL</span>' : ''}
+                            </div>
                             <div class="payment-meta">Tarifa ${p.tipo_tarifa} · ${p.frecuencia === 'mensual' ? 'Mensual' : 'Semanal'}</div>
                         </div>
                         <div class="payment-amount">${CONFIG.formatMoney(p.monto)}</div>
-                    </div>`).join('');
+                    </div>`;
+                }).join('');
 
                 periodosHTML = `
                     <div class="card-ettur fade-in" style="animation-delay:0.2s">
@@ -88,7 +90,6 @@ const PageDashboard = {
             <div class="page-title"><i class="bi bi-house-fill"></i> ¡Hola, ${Auth.user.nombres}!</div>
             ${deudaHTML}
             ${accionesHTML}
-
             <div class="quick-actions fade-in" style="animation-delay:0.15s">
                 <div class="quick-action" onclick="App.navigate('pagar')">
                     <i class="bi bi-cash-stack"></i>
@@ -99,23 +100,16 @@ const PageDashboard = {
                     <span>Mis Pagos</span>
                 </div>
             </div>
-
             ${periodosHTML}`;
     },
 
     async renderAdmin(main) {
         const res = await API.getDashboard();
-
-        if (!res.success) {
-            main.innerHTML = `<div class="alert alert-danger">${res.message}</div>`;
-            return;
-        }
-
+        if (!res.success) { main.innerHTML = `<div class="alert alert-danger">${res.message}</div>`; return; }
         const d = res.data;
 
         main.innerHTML = `
             <div class="page-title"><i class="bi bi-speedometer2"></i> Dashboard</div>
-
             <div class="row g-3 mb-3 fade-in">
                 <div class="col-6">
                     <div class="stat-card">
@@ -184,9 +178,7 @@ const PageDashboard = {
             </div>
 
             <div class="card-ettur fade-in" style="animation-delay:0.2s">
-                <div class="card-head">
-                    <h3>Últimos Pagos Registrados</h3>
-                </div>
+                <div class="card-head"><h3>Últimos Pagos Registrados</h3></div>
                 <div class="card-body-inner">
                     ${d.ultimos_pagos.length > 0 ? d.ultimos_pagos.map(p => `
                         <div class="payment-item">
