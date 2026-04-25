@@ -1,6 +1,6 @@
 /**
- * ETTUR - Controlador Principal v2.0
- * Login con DNI + Placa
+ * ETTUR - Controlador Principal v3.0
+ * Con ruta pagar-historico
  */
 const App = {
     init() {
@@ -38,7 +38,6 @@ const App = {
             errorEl.classList.remove('d-none');
             return;
         }
-
         if (!/^\d{8}$/.test(dni)) {
             errorEl.textContent = 'El DNI debe tener 8 dígitos';
             errorEl.classList.remove('d-none');
@@ -85,14 +84,15 @@ const App = {
         const main = document.getElementById('app-main');
 
         switch (pageId) {
-            case 'dashboard':   PageDashboard.render(); break;
-            case 'pagar':       PagePagos.renderPagar(main); break;
-            case 'mis-pagos':   PagePagos.renderMisPagos(main); break;
-            case 'validar':     PageValidar.render(); break;
-            case 'reportes':    PageReportes.render(); break;
-            case 'usuarios':    PageUsuarios.render(); break;
-            case 'tarifas':     PageTarifas.render(); break;
-            case 'perfil':      PagePerfil.render(); break;
+            case 'dashboard':       PageDashboard.render(); break;
+            case 'pagar':           PagePagos.renderPagar(main, 'corriente'); break;
+            case 'pagar-historico': PagePagos.renderPagar(main, 'historico'); break;
+            case 'mis-pagos':       PagePagos.renderMisPagos(main); break;
+            case 'validar':         PageValidar.render(); break;
+            case 'reportes':        PageReportes.render(); break;
+            case 'usuarios':        PageUsuarios.render(); break;
+            case 'tarifas':         PageTarifas.render(); break;
+            case 'perfil':          PagePerfil.render(); break;
             default: main.innerHTML = UI.emptyState('question-circle', 'Página no encontrada');
         }
         window.scrollTo(0, 0);
