@@ -52,8 +52,8 @@ const PageReportes = {
         container.innerHTML = '<div class="loading-center"><div class="spinner-ettur"></div></div>';
 
         const hoy = new Date();
-        const anio = hoy.getFullYear();
-        const mes = hoy.getMonth() + 1;
+        const anio = parseInt(document.getElementById('meta-anio')?.value || hoy.getFullYear());
+        const mes = parseInt(document.getElementById('meta-mes')?.value || (hoy.getMonth() + 1));
 
         const res = await API.getMetaMensual(anio, mes);
 
@@ -99,7 +99,14 @@ const PageReportes = {
                 <div class="card-body-inner pt-3">
                     <div class="text-center mb-3">
                         <div class="text-muted" style="font-size:0.8rem">Meta de Recaudación</div>
-                        <h3 class="mb-0">${d.mes_nombre} ${d.anio}</h3>
+                        <div class="d-flex justify-content-center gap-2 mt-1">
+                            <select class="form-select form-select-sm" style="width:auto" id="meta-mes" onchange="PageReportes.renderMeta()">
+                                ${[['1','Enero'],['2','Febrero'],['3','Marzo'],['4','Abril'],['5','Mayo'],['6','Junio'],['7','Julio'],['8','Agosto'],['9','Septiembre'],['10','Octubre'],['11','Noviembre'],['12','Diciembre']].map(m => `<option value="${m[0]}" ${parseInt(m[0])===mes?'selected':''}>${m[1]}</option>`).join('')}
+                            </select>
+                            <select class="form-select form-select-sm" style="width:auto" id="meta-anio" onchange="PageReportes.renderMeta()">
+                                ${[2025,2026,2027].map(a => `<option value="${a}" ${a===anio?'selected':''}>${a}</option>`).join('')}
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Barra principal -->
@@ -349,13 +356,16 @@ const PageReportes = {
             pagosHtml = `
                 <div class="scroll-area">
                     <table class="table table-sm table-ettur mb-0">
-                        <thead><tr><th>Periodo</th><th>Tipo</th><th>Estado</th><th class="text-end">Monto</th></tr></thead>
+                        <thead><tr><th>Periodo / Fecha Pago</th><th>Tipo</th><th>Estado</th><th class="text-end">Monto</th></tr></thead>
                         <tbody>
                             ${d.pagos.map(p => {
                                 const esHist = p.tipo_periodo === 'historico';
                                 return `
                                 <tr>
-                                    <td>${CONFIG.periodLabelShort(p)}</td>
+                                    <td>
+                                        ${CONFIG.periodLabelShort(p)}
+                                        <div style="font-size:0.65rem;color:var(--text-muted)"><i class="bi bi-clock"></i> Pagado: ${CONFIG.formatDateTime(p.fecha_pago)}</div>
+                                    </td>
                                     <td>${esHist ? '<span class="badge bg-secondary" style="font-size:0.6rem">HIST</span>' : '<span class="badge bg-primary" style="font-size:0.6rem">CORR</span>'}</td>
                                     <td>${UI.badgeEstado(p.estado)}</td>
                                     <td class="text-end">${CONFIG.formatMoney(p.monto_pagado)}</td>
