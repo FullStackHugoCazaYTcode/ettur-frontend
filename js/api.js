@@ -118,6 +118,10 @@ const API = {
         return this.request(`/api/reportes?${query}`);
     },
 
+    // Reportes avanzados
+    async getMetaMensual(anio, mes) { return this.request(`/api/reportes?action=meta-mensual&anio=${anio}&mes=${mes}`); },
+    async getDeudas() { return this.request('/api/reportes?action=deudas'); },
+
     // Configuración
     async getConfig() { return this.request('/api/config?action=get'); },
     async getYapeInfo() { return this.request('/api/config?action=yape'); },
