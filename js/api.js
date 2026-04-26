@@ -123,6 +123,12 @@ const API = {
     async getDeudas() { return this.request('/api/reportes?action=deudas'); },
 
     // Configuración
+
+    // Documentos
+    async getDocumentos(usuarioId) { return this.request(`/api/documentos?action=get&usuario_id=${usuarioId}`); },
+    async getMisDocumentos() { return this.request('/api/documentos?action=mis-documentos'); },
+    async guardarDocumento(data) { return this.request('/api/documentos?action=save', { method: 'POST', body: data }); },
+    
     async getConfig() { return this.request('/api/config?action=get'); },
     async getYapeInfo() { return this.request('/api/config?action=yape'); },
     async updateConfig(data) { return this.request('/api/config?action=update', { method: 'POST', body: data }); },
