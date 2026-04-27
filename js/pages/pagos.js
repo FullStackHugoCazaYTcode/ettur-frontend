@@ -249,9 +249,126 @@ const PagePagos = {
         main = main || document.getElementById('app-main');
         UI.loading();
         const res = await API.getMisPagos();
-        let content = '';
-        if (res.success && res.data.length > 0) {
-            content = res.data.map(p => {
+
+        const hoy = new Date();
+        const mesActual = hoy.getMonth();
+        const anioActual = hoy.getFullYear();
+
+        let pagos = res.success ? res.data : [];
+
+        main.innerHTML = `
+            <div class="page-title"><i class="bi bi-receipt"></i> Mis Comprobantes</div>
+
+            <div class="card-ettur fade-in mb-3">
+                <div class="card-body-inner py-2">
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <div class="d-flex gap-1 flex-wrap">
+                                <button class="btn btn-sm btn-primary filtro-estado-btn" data-estado="" onclick="PagePagos.filtrarMisPagos(this)">Todos</button>
+                                <button class="btn btn-sm btn-outline-success filtro-estado-btn" data-estado="aprobado" onclick="PagePagos.filtrarMisPagos(this)">Aprobados</button>
+                                <button class="btn btn-sm btn-outline-warning filtro-estado-btn" data-estado="pendiente" onclick="PagePagos.filtrarMisPagos(this)">Pendientes</button>
+                                <button class="btn btn-sm btn-outline-danger filtro-estado-btn" data-estado="rechazado" onclick="PagePagos.filtrarMisPagos(this)">Rechazados</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-2 mt-1">
+                        <div class="col-7">
+                            <select class="form-select form-select-sm" id="filtro-mes">
+                                <option value="">Todos los meses</option>
+                                ${['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'].map((m, i) =>
+                                    `<option value="${i}" ${i === mesActual ? 'selected' : ''}>${m}</option>`
+                                ).join('')}
+                            </select>
+                        </div>
+                        <div class="col-5">
+                            <select class="form-select form-select-sm" id="filtro-anio">
+                                ${[2025, 2026, 2027].map(a => `<option value="${a}" ${a === anioActual ? 'selected' : ''}>${a}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="mis-pagos-resumen" class="mb-3"></div>
+            <div class="card-ettur fade-in">
+                <div class="card-body-inner pt-3" id="mis-pagos-list"></div>
+            </div>`;
+
+        // Guardar pagos para filtrar
+        this._misPagos = pagos;
+        this._filtroEstado = '';
+        this._filtroMes = mesActual.toString();
+        this._filtroAnio = anioActual.toString();
+
+        // Eventos de filtro
+        document.getElementById('filtro-mes').onchange = () => { this._filtroMes = document.getElementById('filtro-mes').value; this.aplicarFiltroMisPagos(); };
+        document.getElementById('filtro-anio').onchange = () => { this._filtroAnio = document.getElementById('filtro-anio').value; this.aplicarFiltroMisPagos(); };
+
+        this.aplicarFiltroMisPagos();
+    },
+
+    filtrarMisPagos(btn) {
+        document.querySelectorAll('.filtro-estado-btn').forEach(b => {
+            b.className = b.className.replace('btn-primary', 'btn-outline-secondary')
+                .replace('btn-success', 'btn-outline-success')
+                .replace('btn-warning', 'btn-outline-warning')
+                .replace('btn-danger', 'btn-outline-danger');
+        });
+
+        const estado = btn.dataset.estado;
+        this._filtroEstado = estado;
+
+        if (estado === '') btn.className = 'btn btn-sm btn-primary filtro-estado-btn';
+        else if (estado === 'aprobado') btn.className = 'btn btn-sm btn-success filtro-estado-btn';
+        else if (estado === 'pendiente') btn.className = 'btn btn-sm btn-warning filtro-estado-btn';
+        else if (estado === 'rechazado') btn.className = 'btn btn-sm btn-danger filtro-estado-btn';
+
+        this.aplicarFiltroMisPagos();
+    },
+
+    aplicarFiltroMisPagos() {
+        let pagos = this._misPagos || [];
+
+        // Filtrar por estado
+        if (this._filtroEstado) {
+            pagos = pagos.filter(p => p.estado === this._filtroEstado);
+        }
+
+        // Filtrar por mes/año
+        if (this._filtroMes !== '') {
+            const mes = parseInt(this._filtroMes);
+            const anio = parseInt(this._filtroAnio || new Date().getFullYear());
+            pagos = pagos.filter(p => {
+                if (!p.periodo_inicio) return false;
+                const fecha = new Date(p.periodo_inicio + 'T00:00:00');
+                return fecha.getMonth() === mes && fecha.getFullYear() === anio;
+            });
+        }
+
+        // Resumen
+        const total = pagos.length;
+        const aprobados = pagos.filter(p => p.estado === 'aprobado').length;
+        const pendientes = pagos.filter(p => p.estado === 'pendiente').length;
+        const rechazados = pagos.filter(p => p.estado === 'rechazado').length;
+        const montoAprobado = pagos.filter(p => p.estado === 'aprobado').reduce((s, p) => s + parseFloat(p.monto_pagado), 0);
+
+        const resumenEl = document.getElementById('mis-pagos-resumen');
+        if (resumenEl) {
+            resumenEl.innerHTML = total > 0 ? `
+                <div class="row g-2 fade-in">
+                    <div class="col-3"><div class="stat-card py-2"><div class="stat-info text-center" style="width:100%"><div class="stat-value" style="font-size:1rem">${total}</div><div class="stat-label" style="font-size:0.6rem">Total</div></div></div></div>
+                    <div class="col-3"><div class="stat-card py-2"><div class="stat-info text-center" style="width:100%"><div class="stat-value text-success" style="font-size:1rem">${aprobados}</div><div class="stat-label" style="font-size:0.6rem">Aprobados</div></div></div></div>
+                    <div class="col-3"><div class="stat-card py-2"><div class="stat-info text-center" style="width:100%"><div class="stat-value text-warning" style="font-size:1rem">${pendientes}</div><div class="stat-label" style="font-size:0.6rem">Pendientes</div></div></div></div>
+                    <div class="col-3"><div class="stat-card py-2"><div class="stat-info text-center" style="width:100%"><div class="stat-value text-danger" style="font-size:1rem">${rechazados}</div><div class="stat-label" style="font-size:0.6rem">Rechazados</div></div></div></div>
+                </div>` : '';
+        }
+
+        // Lista
+        const listEl = document.getElementById('mis-pagos-list');
+        if (!listEl) return;
+
+        if (pagos.length > 0) {
+            listEl.innerHTML = pagos.map(p => {
                 const esHistorico = p.tipo_periodo === 'historico';
                 return `
                 <div class="payment-item" onclick="PagePagos.verDetalle(${p.id})">
@@ -273,13 +390,15 @@ const PagePagos = {
                 </div>`;
             }).join('');
         } else {
-            content = UI.emptyState('receipt', 'Sin pagos registrados', 'Aún no has registrado ningún pago.');
+            const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+            const mesTexto = this._filtroMes !== '' ? meses[parseInt(this._filtroMes)] + ' ' + this._filtroAnio : '';
+            const estadoTexto = this._filtroEstado ? ` con estado "${this._filtroEstado}"` : '';
+            listEl.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="bi bi-receipt" style="font-size:2rem;opacity:0.3"></i>
+                    <p class="text-muted mt-2 mb-0">No hay pagos${estadoTexto}${mesTexto ? ' en ' + mesTexto : ''}</p>
+                </div>`;
         }
-        main.innerHTML = `
-            <div class="page-title"><i class="bi bi-receipt"></i> Mis Comprobantes</div>
-            <div class="card-ettur fade-in">
-                <div class="card-body-inner pt-3">${content}</div>
-            </div>`;
     },
 
     async verDetalle(id) {
